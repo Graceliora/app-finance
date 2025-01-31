@@ -9,6 +9,9 @@ import { useForm } from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod"
 import { transactionSchema } from "@/lib/validation";
 import { useState } from "react";
+import { useRouter } from "next/navigation"
+import { purgeTransactionListCache } from "@/lib/actions";
+import FormError from "@/components/form-error";
 
 
 export default function TransactionForm() {
@@ -21,6 +24,8 @@ export default function TransactionForm() {
         mode: "onTouched",
         resolver: zodResolver(transactionSchema)
       })
+      const router = useRouter()
+
       const [isSaving, setSaving] = useState(false)
   const onSubmit = async (data) => {
     setSaving(true)
@@ -35,6 +40,8 @@ export default function TransactionForm() {
           created_at: `${data.created_at}T00:00:00`
         })
       })
+      await purgeTransactionListCache()
+      router.push('/dashboard')
     } finally {
       setSaving(false)
     }
@@ -48,6 +55,8 @@ export default function TransactionForm() {
             {type}
           </option>)}
                   </Select>
+                  <FormError error={errors.type} />
+
       </div>
       <div>
         <Label className="mb-1">Category</Label>
@@ -56,23 +65,25 @@ export default function TransactionForm() {
             {category}
           </option>)}
                   </Select>
+                  <FormError error={errors.type} />
+
       </div>
       <div>
       <Label className="mb-1">Date</Label>
       <Input {...register("created_at")} />
 
-        {errors.created_at && <p className="mt-1 text-red-500">{errors.created_at.message}</p>}
-              </div>
+      <FormError error={errors.created_at} />
+        </div>
       <div>
         <Label className="mb-1">Amount</Label>
         <Input type="number" {...register("amount")} />
-        {errors.amount && <p className="mt-1 text-red-500">{errors.amount.message}</p>}
-              </div>
+        <FormError error={errors.created_at} />
+        </div>
               <div className="col-span-1 md:col-span-2">
         <Label className="mb-1">Description</Label>
         <Input {...register("description")} />
-        {errors.description && <p className="mt-1 text-red-500">{errors.description.message}</p>}
-              </div>
+        <FormError error={errors.created_at} />
+        </div>
     </div>
     <div className="flex justify-end">
     <Button type="submit" disabled={isSaving}>Save</Button>
