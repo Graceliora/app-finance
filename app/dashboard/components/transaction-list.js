@@ -1,31 +1,36 @@
+'use client'
+import Button from "@/components/button"
 import TransactionItem from "@/components/transaction-item"
 import TransactionSummaryItem from "@/components/transaction-summary-item"
+import { fetchTransactions } from "@/lib/actions"
 import Separator from "@/components/separator"
-import { createClient } from "@/lib/supabase/server"
+import { groupAndSumTransactionsByDate } from "@/lib/utils"
+import { useState } from "react"
+import { Loader } from "lucide-react"
 
 
-const groupAndSumTransactionsByDate = (transactions) => {
-  const grouped = {}
-  for (const transaction of transactions) {
-    const date = transaction.created_at.split('T')[0]
-    if(!grouped[date]) {
-      grouped[date] = {transactions: [], amount: 0}
-    }
-    grouped[date].transactions.push(transaction)
-    const amount = transaction.type === 'Expense' ? -transaction.amount : transaction.amount
-    grouped[date].amount += amount
-  }
-  return grouped
-}
-
-export default async function TransactionList() {
-  const supabase = createClient()
-  const {data: transactions, error} = await supabase
-    .from('transactions')
-    .select('*')
-    .order('created_at', {ascending: false})
+export default function TransactionList({range, initialTransactions}) {
+  const [transactions, setTransactions] = useState(initialTransactions)
+  const [offset, setOffset] = useState(initialTransactions.length + 1)
+  const [buttonHidden, setButtonHidden] = useState(initialTransactions.length === 0)
+  const [loading, setLoading] = useState(false)
   const grouped = groupAndSumTransactionsByDate(transactions)
-  
+
+  const handleClick = async (e) => {
+    setLoading(true)
+    let nextTransactions = null
+    try {
+      nextTransactions = await fetchTransactions(range, offset, 10)
+      setButtonHidden(nextTransactions.length === 0)
+      setOffset(prevValue => prevValue + 10)
+      setTransactions(prevTransactions => [
+        ...prevTransactions,
+        ...nextTransactions
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <div className="space-y-8">
       {Object.entries(grouped)
@@ -40,6 +45,15 @@ export default async function TransactionList() {
             </section>
           </div>
         )}
+        {transactions.length === 0 && <div className="text-center text-gray-400 dark:text-gray-500">No transactions found</div>}
+      {!buttonHidden && <div className="flex justify-center">
+        <Button variant="ghost" onClick={handleClick} disabled={loading}>
+          <div className="flex items-center space-x-1">
+            {loading && <Loader className="animate-spin" />}
+            <div>Load More</div>
+          </div>
+        </Button>
+      </div>}
     </div>
   )
 }
